@@ -6,8 +6,11 @@ dotenv.config();
 const productNumber = process.env.PRODUCT_NUMBER;
 const pollingInterval = process.env.POLLING_INTERVAL;
 const clientId = process.env.CLIENT_ID;
+const storeId = process.env.STORE_ID;
 
 const ikeaUrl = 'https://api.ingka.ikea.com/cia/availabilities/ru/nl?itemNos=';
+const requestUrl = `${ikeaUrl}${productNumber}`;
+
 let timer = null;
 
 const transporter = nodemailer.createTransport({
@@ -20,7 +23,7 @@ const transporter = nodemailer.createTransport({
 
 async function checkStock() {
   axios
-    .get(`${ikeaUrl}${productNumber}`, {
+    .get(requestUrl, {
       headers: {
         'x-client-id': clientId,
       },
@@ -35,7 +38,13 @@ async function checkStock() {
         for (let i = 0; i < data.length; i++) {
           if (data[i].availableStocks) {
             for (let j = 0; j < data[i].availableStocks.length; j++) {
-              totalStockAmount += data[i].availableStocks[j].quantity;
+              if (storeId) {
+                if (data[i].classUnitKey.classUnitCode == storeId) {
+                  totalStockAmount += data[i].availableStocks[j].quantity;
+                }
+              } else {
+                totalStockAmount += data[i].availableStocks[j].quantity;
+              }
             }
           }
         }
@@ -44,9 +53,10 @@ async function checkStock() {
         sendErrorEmail(`Unsuccessful request.\nStatusCode: ${res.status}`);
       }
 
+      console.log('total stock:', totalStockAmount);
+
       if (totalStockAmount > 0) {
         // Notify stock is available
-        console.log('total stock:', totalStockAmount);
         sendStockEmail(totalStockAmount);
 
         clearInterval(timer);
