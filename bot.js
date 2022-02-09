@@ -83,6 +83,7 @@ function sendErrorEmail(errorText) {
   });
 }
 
+checkStock();
 timer = setInterval(() => {
   checkStock();
 }, pollingInterval);
